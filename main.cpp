@@ -1,6 +1,8 @@
 /* Project Title	:	Type Racer
  * Built By		:	Medam Sai Sirisha
  * This project is used for testing the typing speed of users and producing results on the basis of the performance.
+ * The user has three levels having different time limits.The timer works based on the key events.
+ * User's scores are displayed as a graph and he can check his performance or growth using statistics options.
  */
 
 #include<stdio.h>
@@ -12,6 +14,7 @@
 #include<Windows.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include"tutor.h"
 
 typedef struct user
 {
@@ -40,20 +43,8 @@ user *user1;
 int num ;
 char str[8]="RESULTS";
 
-void fetch_score(int);
-void fetch_data();
-void gotoxy(int, int);
-void load_screen(char *);
-void menu();
-void print_layout();
-int save_data();
-void view_instruction();
-void test_speed();
-void test_lesson();
-int take_input();
-void view_ranker();
 
-
+/*Function to print header*/
 void print_layout()
 {
     printf("\n------------------------------------------------------------------------------------------------------------------------");
@@ -61,6 +52,7 @@ void print_layout()
     printf("\n------------------------------------------------------------------------------------------------------------------------\n");
 }
 
+/*Function to set cursor position*/
 void gotoxy(int x, int y)
 {
     COORD c = { x, y };
@@ -102,6 +94,7 @@ void print_user()
     printf("\n\t\t\t\t\t  >>>>TEST YOUR SPEED %s<<<<",user1->username);
 }
 
+/*Load screen*/
 void load_screen(char *str)
 {
     int  j,i;
@@ -115,6 +108,7 @@ void load_screen(char *str)
         printf("%c", 177);
     }
 }
+
 void print_lesson()
 {
     char choice;
@@ -160,7 +154,7 @@ void print_lesson()
 
         case 'c':
         case 'C':
-            fileread = fopen("testlesson1e.txt", "r");
+            fileread = fopen("testlesson1h.txt", "r");
             break;
 
         default :
@@ -170,7 +164,7 @@ void print_lesson()
 
     case 2:
         printf("\nEnter level :");
-        scanf("%c", &choice);
+        scanf(" %c", &choice);
         switch (choice)
         {
         case 'a':
@@ -195,7 +189,7 @@ void print_lesson()
 
     case 3:
         printf("\nEnter level :");
-        scanf("%c", &choice);
+        scanf(" %c", &choice);
         switch (choice)
         {
         case 'a':
@@ -222,6 +216,7 @@ void print_lesson()
         menu();
     }
 
+    /*Check whether file opened successfully or not*/
     if (fileread == NULL)
     {
         printf("\nError occurred !!!\nMake sure you enter a valid option\nTry again later!!!!\n");
@@ -229,6 +224,7 @@ void print_lesson()
     }
 
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 11);
+
     user1->test_level = choice;
     user1->test_lesson = ch;
     if (user1->test_level == 'a' || user1->test_level == 'A')
@@ -241,13 +237,14 @@ void print_lesson()
     }
     else
     {
-        user1->time_limit = 10;
+        user1->time_limit = 60;
     }
 
     test_lesson();
 
 }
-int take_input()
+
+int take_input(int *time_taken,int *sound)
 {
     DWORD        mode;          /* Preserved console mode */
     INPUT_RECORD event;         /* Input event */
@@ -266,16 +263,18 @@ int take_input()
     /* Set to no line-buffering, no echo, no special-key-processing */
     SetConsoleMode( hstdin, 0 );
 
-    /* Give the user instructions */
     fprintf(fp,"\n");
 
     char szBuffer;
     DWORD dwCount;
-    int charsToDelete = 1, typed_char = 0, flag = 0;
-    off_t position;
-    time_t end_time=time(NULL);
-    time(&end_time);
-    end_time+=user1->time_limit;
+    int charsToDelete = 2, typed_char = 0, flag = 0;
+    off_t position;                                      //Delete extra characters from end of file if the user has quit the program using END option.
+
+    /*Sets the time limit for the user*/
+    time_t start_time=time(NULL);
+    time(&start_time);
+    time_t end_time;
+    end_time=start_time+user1->time_limit;
     time_t currtime=time(NULL);
     time(&currtime);
 
@@ -283,24 +282,30 @@ int take_input()
     {
         if (WaitForSingleObject( hstdin, 0 ) == WAIT_OBJECT_0)  /* if kbhit */
         {
+            //Measures the current time when keyboard is hit
             time(&currtime);
+
+            if(*sound==1)
+              {
+                  Beep(3087,1*5);
+              }
             if(currtime<end_time)
             {
+                /*Disallow the user to copy the contents using Ctrl or Mouse left click button*/
+
                 if(GetAsyncKeyState(VK_END)||GetAsyncKeyState(VK_LBUTTON)||GetAsyncKeyState(VK_LCONTROL)||GetAsyncKeyState(VK_RCONTROL))
                 {
                     done=TRUE;
                     flag = 1;
                 }
-                else if(GetAsyncKeyState(VK_RETURN))
+                else if(GetAsyncKeyState(VK_RETURN))//Check whether the enter key is pressed or not
                 {
                     printf("\n");
                     fprintf(fp,"%c",'\n');
                 }
                 else if(GetAsyncKeyState(VK_BACK))
                 {
-                    fseeko64(fp,-charsToDelete,SEEK_END);
-                    position = ftell(fp);
-                    ftruncate(fileno(fp), position);
+                    fseeko64(fp,-charsToDelete,SEEK_CUR);
                 }
                 else
                 {
@@ -313,7 +318,9 @@ int take_input()
             else
             {
                 done=TRUE;
-                printf("\a");
+
+                /*Produces an audible alert when timer expires*/
+                Beep(2450,1*1000);
                 break;
             }
         }
@@ -325,23 +332,30 @@ int take_input()
         fseeko64(fp,-charsToDelete,SEEK_END);
         position = ftell(fp);
         ftruncate(fileno(fp), position);
+        *time_taken = currtime-start_time;
         return typed_char-1;
     }
     else
     {
+        *time_taken = user1->time_limit;
         return typed_char;
     }
 }
 
 void test_lesson()
 {
+    char ch;
+    int sound=1;
+    int time_taken=0;
+
     system("cls");
     print_user();
     printf("\nTEST LESSON : %d\nLEVEL : %c)\n\n", user1->test_lesson, user1->test_level);
-    char ch;
 
-    printf("\nPress any alphabet to start(Esc to reselect the option)\n\nPress END key followed by any alphabet to stop giving input :)");
-    printf("\n\nDon't use backspace\n");
+    fflush(stdin);
+    printf("Sound(ON[1]/OFF[2]):\n");
+    scanf("%d",&sound);
+    printf("\nPress any alphabet to start(Esc to reselect the option)\n\nPress END key followed by any alphabet to stop giving input :)\n");
 
     fflush(stdin);
     ch = _getch();
@@ -364,25 +378,67 @@ void test_lesson()
         printf("%c", ch);
 
     }
-    printf("\n\n\nStart!!!\n\n");
+    printf("\n\nStart!!!\n");
     fflush(stdin);
 
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 11);
 
-    int typed_char = take_input();
+    int typed_char = take_input(&time_taken,&sound);
 
     fflush(stdin);
     time_t end_time = time(NULL);
     strcpy(user1->end_time, ctime(&end_time));
     user1->end_time[25] = '\0';
 
-    printf("\nEnded time: %s\n", user1->end_time);
+    printf("\nEnded time: %s\n\n", user1->end_time);
     fclose(fp);
     fflush(stdin);
-    fetch_score(typed_char);
+    fetch_score(typed_char,time_taken);
 }
 
-void fetch_score(int typed_char)
+void print_score(int num_of_errors,float accuracy,float wpm)
+{
+   int gd = DETECT, gm;
+   char dest[]="X:\\TC\\BGI",title[]="SCORE CARD",msg[]="PRESS ANY KEY TO CLOSE",x[]="X",y[]="Y",o[]="O";
+   initgraph(&gd, &gm,dest );
+
+   outtext(msg);
+   settextstyle(BOLD_FONT,HORIZ_DIR,2);
+   outtextxy(510,20,title);
+
+   setlinestyle(SOLID_LINE,0,2);
+   /* Draw X and Y Axis */
+   line(90,410,90,50);
+   line(90,410,590,410);
+   line(85,60,90,50);
+   line(95,60,90,50);
+   line(585,405,590,410);
+   line(585,415,590,410);
+
+   outtextxy(65,60,y);
+   outtextxy(570,420,x);
+   outtextxy(70,415,o);
+   /* Draw bars on screen */
+   setfillstyle(XHATCH_FILL, YELLOW);
+
+   int maxy=getmaxy();
+   char score[]="SCORE",err[]="ERRORS",acc[]="ACCURACY",w_p_m[]="W_P_M";
+
+   bar(150,maxy-70-user1->score,200,410);
+   outtextxy(145,410,score);
+   bar(225,maxy-70-num_of_errors,275,410);
+   outtextxy(220,410,err);
+   bar(320,(maxy-70-(int)accuracy),370,410);
+   outtextxy(300,410,acc);
+   bar(420,(maxy-70-(int)wpm),470,410);
+   outtextxy(415,410,w_p_m);
+
+   getch();
+   closegraph();
+}
+
+/*Fetch score depending on the number of characters typed and errors occurred*/
+void fetch_score(int typed_char,int time_taken)
 {
     char actual_char,typ_char,ch;
     int num_of_errors = 0;
@@ -394,7 +450,6 @@ void fetch_score(int typed_char)
     fseek(fileread, 0, SEEK_SET);
 
     user1->score = 0;
-    typ_char = fgetc(fp);
     typ_char = fgetc(fp);
     typ_char = fgetc(fp);
     actual_char = fgetc(fileread);
@@ -409,15 +464,17 @@ void fetch_score(int typed_char)
         {
             user1->score += 2;
         }
-        else if(typ_char!=actual_char)
+        else if(typ_char!=actual_char && typ_char!='\n' && typ_char!='\r')
         {
             user1->score -= 1;
             num_of_errors++;
             printf("\nError -> Actual character %c , Entered character %c", actual_char, typ_char);
         }
-        if (typ_char == '\n'||typ_char == '\r')
+        if(typ_char=='\n'||typ_char=='\r')
         {
-            actual_char = fgetc(fileread);
+            actual_char=fgetc(fileread);
+            typ_char=fgetc(fp);
+            typ_char=fgetc(fp);
         }
         typ_char = fgetc(fp);
         actual_char = fgetc(fileread);
@@ -427,11 +484,12 @@ void fetch_score(int typed_char)
 
     float accuracy = (float)(typed_char-num_of_errors)/ typed_char*100;
 
-    if (user1->time_limit == 120)
+    if (time_taken > 90 && time_taken <= 120)
         words_per_m/= 2;
-    else if (user1->time_limit == 90)
+    else if (time_taken > 60 && time_taken <= 90)
         words_per_m/= 1.5;
 
+    /*Converts accuracy and words_per_minute into strings for storing in files*/
     _gcvt(accuracy, 5, user1->accuracy);
     _gcvt(words_per_m, 4, user1->words_per_m);
 
@@ -439,7 +497,7 @@ void fetch_score(int typed_char)
     user1->accuracy[7]='\0';
     user1->words_per_m[5]='\0';
 
-    Sleep(2000);
+    Sleep(3000);
     fflush(stdin);
 
     printf("\nPress Esc./Enter to continue......");
@@ -456,9 +514,10 @@ void fetch_score(int typed_char)
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
 
     printf("\n\t\t\t\t\t     >>>SCORE CARD<<< ");
-    printf("\nUSERNAME : %s\nTEST TIME : %s\nTEST LESSON : %d\nTEST LEVEL : %c\n\n", user1->username, user1->time_start,user1->test_lesson,user1->test_level);
+    printf("\nUSERNAME : %s\nTEST TIME : %s\nTIME TAKEN  :  %d seconds\n\nTEST LESSON : %d\nTEST LEVEL : %c\n\n", user1->username, user1->time_start,time_taken,user1->test_lesson,user1->test_level);
     printf("\nNUMBER OF ERRORS : %d\nSCORE : %d\nACCURACY : %s\nWORDS PER MINUTE : %s", num_of_errors, user1->score,user1->accuracy,user1->words_per_m);
 
+    print_score(num_of_errors,accuracy,words_per_m);
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
 
     int res=save_data();
@@ -476,6 +535,7 @@ void fetch_score(int typed_char)
         menu();
 }
 
+/*Saves data to the users.txt file and in  case of failure returns -1*/
 int save_data()
 {
     filewrite = fopen("users.txt", "a");
@@ -517,6 +577,7 @@ void test_speed()
     print_lesson();
 }
 
+/*Fetch data of all users to display*/
 void fetch_data()
 {
     rec record;
@@ -582,7 +643,7 @@ void fetch_data()
 
 }
 
-void view_ranker()
+void view_all_rec()
 {
     system("cls");
     print_layout();
@@ -609,6 +670,17 @@ void view_ranker()
         menu();
 }
 
+void print_keyboard()
+{
+   char msg[]="PRESS ANY KEY TO CLOSE";
+   initwindow(700,500,"FINGER POSITION");
+   readimagefile("keyboard_finger.jpg",20,20,700,500);
+   outtext(msg);
+   getch();
+   closegraph();
+   fflush(stdout);
+}
+
 void view_instruction()
 {
     char ch;
@@ -622,11 +694,199 @@ void view_instruction()
     printf("\n\t Easy : 120 seconds");
     printf("\n\t Medium : 90 seconds");
     printf("\n\t Hard : 60 seconds");
-    printf("\n3.User should use same username for further tests as well.");
-    printf("\n4.User cannot retype the text once typed else score is reduced.");
-    printf("\n5.User can quit the game any time by pressing END\n  followed by any alphabet.");
-    printf("\n6.You can quit the test by choosing the quit option.\n");
+    printf("\n3.User should use same user name for further tests as well.");
+    printf("\n4.User can choose the SOUND ON/OFF option by using numbers 1/2 .");
+    printf("\n5.User will be prompted with a beep sound when timer expires.Make sure your speakers are ON!!!:)");
+    printf("\n6.User can quit the game any time by pressing END followed by any alphabet.\n");
+    printf("\n\n");
+
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+    print_keyboard();
+
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
     printf("\nPress Enter to continue......");
+    fflush(stdin);
+
+    ch = getchar();
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 11);
+    if(ch==27||ch=='\r'||ch=='\n')
+        menu();
+}
+
+/*Searches for the number of records of a particular user and returns -1 if not found*/
+int search_user_name(char *name,int *arr,int *num)
+{
+    fileread=fopen("users.txt","r");
+    char ch;
+    if(fileread==NULL)
+    {
+        printf("\nError opening file");
+        return -1;
+    }
+    else
+    {
+        //search for the user;
+        char user[50],ch,score[5];
+        int arr_ind=0;
+        while((ch=fgetc(fileread))!=EOF)
+        {
+            int index=0;
+
+            while((ch=fgetc(fileread))!=',')
+            {
+                user[index]=ch;
+                index++;
+            }
+            user[index]='\0';
+
+            if(strcmp(name,user)==0)
+            {
+                index=0;
+
+                while((ch=fgetc(fileread))!=',')
+                {
+                    score[index]=ch;
+                    index++;
+                }
+                score[index]='\0';
+
+                arr[arr_ind]=atoi(score);
+                arr_ind++;
+                (*num)++;
+
+                while((ch=fgetc(fileread))!='$');
+            }
+            else
+            {
+                while(fgetc(fileread)!='$');
+            }
+        }
+        if(*num==0)
+            return -1;
+        else
+            return 0;
+    }
+}
+
+/*Prints graph of a particular user depending on the scores*/
+void print_graph(int *arr,int *num)
+{
+    int gd = DETECT, gm;
+    int maxx,maxy;
+    int x1=30,y1=450,x2=100,y2=350;
+    char location[]="C:\\TC\\BGI";
+    char x_axis[]="TEST TAKEN";
+    char name[]="SCORE",message[]="PRESS ANY KEY TO CLOSE THE GRAPH!!!!",x[]="X",y[]="y";
+
+    initgraph(&gd, &gm,location);
+
+    /* Sets the paint color to light blue */
+    setcolor(LIGHTCYAN);
+
+    /*Draws x axis and y axis*/
+    line(0,450,600,450);
+    line(30,590,30,30);
+    line(25,40,30,30);
+    line(35,40,30,30);
+    line(600,445,605,450);
+    line(600,455,605,450);
+
+    maxx=getmaxx();
+    maxy=getmaxy();
+    settextstyle(SANS_SERIF_FONT,0,2);
+
+    setcolor(LIGHTMAGENTA);
+
+    outtextxy(15,35,y);
+    outtextxy(590,460,x);
+    outtextxy(maxx/2-30,460,x_axis);
+    outtextxy(maxx-100,maxy-450,name);
+
+    setcolor(LIGHTGREEN);
+
+    int index=0;
+    for(index=0; index<=*num; index++)
+    {
+        line(x1,y1,x2,y2);
+        x1=x2;
+        y1=y2;
+        if(arr[index]<0)
+        {
+           y2=450;
+           x2=x1+(100-(*num/10)*10);
+        }
+        else
+        {
+           y2=maxy-arr[index];
+           x2=x1+(100-(*num/10)*10);
+        }
+    }
+
+    setcolor(WHITE);
+    outtext(message);
+    getch();
+    closegraph();
+}
+
+void view_records_by_name()
+{
+    print_layout();
+    char ch;
+    char search_user[50];
+    int arr[100],num=0;
+
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
+
+    printf("\nEnter user name to be searched for:");
+    scanf("%s",search_user);
+
+    int res = search_user_name(search_user,arr,&num);
+
+    if(res == -1)
+    {
+        printf("\nUSER NOT FOUND\n\n");
+    }
+    else
+    {
+        print_graph(arr,&num);
+        float avg;
+
+        int index=0,sum=0;
+        for(index=0;index<num;index++)
+        {
+            sum=sum+arr[index];
+        }
+        avg=sum/num;
+
+        if(avg<0)
+        {
+            printf("\nBADGE : ---");
+        }
+        else if(avg>=0&&avg<25)
+        {
+            SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);
+            printf("\nBADGE : BRONZE");
+        }
+        else if(avg>=25&&avg<50)
+        {
+            SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+            printf("\nBADGE : SILVER");
+        }
+        else if(avg>=50&&avg<75)
+        {
+            SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6);
+            printf("\nBADGE : GOLD");
+        }
+        else
+        {
+            SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+            printf("\nBADGE : PLATINUM");
+        }
+    }
+
+    fflush(stdout);
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
+    printf("\n\n\nPress Enter to continue......");
     fflush(stdin);
 
     ch = getchar();
@@ -681,12 +941,16 @@ void menu()
             break;
 
         case '3':
+            system("cls");
+            SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 11);
+            view_records_by_name();
+            system("cls");
             break;
 
         case '4':
             system("cls");
             SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 11);
-            view_ranker();
+            view_all_rec();
             system("cls");
             break;
 

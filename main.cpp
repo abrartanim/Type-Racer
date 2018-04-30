@@ -88,6 +88,25 @@ void box(int x1, int y1, int x2, int y2)
     printf("%c", 188);
 }
 
+void tips()
+{
+  print_layout();
+
+  SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 10);
+
+  char ch;
+  printf("\n1.KEEP YOUR EYES ON THE MONITOR\n\t You will learn the key position faster if you don't look at keyboard while typing.");
+  printf("\n2.KEEP WRISTS UP\n\tKeep your wrists up and straight when typing.\n\tResting your wrist on the wrist rest or the desk will make it difficult to move your hands.");
+  printf("\n3.FOCUS ON ACCURACY\n4.RELAXED POSTURE\n5.TAKE BREAKS");
+
+  SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+  printf("\n\nPress Esc./Enter to continue...");
+  fflush(stdin);
+  scanf("%c",&ch);
+  if(ch==27||ch==10)
+    menu();
+}
+
 void print_user()
 {
     print_layout();
@@ -267,8 +286,10 @@ int take_input(int *time_taken,int *sound)
 
     char szBuffer;
     DWORD dwCount;
+
+    //Delete extra characters from end of file if the user has quit the program using END option.
     int charsToDelete = 2, typed_char = 0, flag = 0;
-    off_t position;                                      //Delete extra characters from end of file if the user has quit the program using END option.
+    off_t position;
 
     /*Sets the time limit for the user*/
     time_t start_time=time(NULL);
@@ -424,7 +445,7 @@ void print_score(int num_of_errors,float accuracy,float wpm)
    int maxy=getmaxy();
    char score[]="SCORE",err[]="ERRORS",acc[]="ACCURACY",w_p_m[]="W_P_M";
 
-   bar(150,maxy-70-user1->score,200,410);
+   bar(150,maxy-200-user1->score,200,410);
    outtextxy(145,410,score);
    bar(225,maxy-70-num_of_errors,275,410);
    outtextxy(220,410,err);
@@ -673,9 +694,26 @@ void view_all_rec()
 void print_keyboard()
 {
    char msg[]="PRESS ANY KEY TO CLOSE";
-   initwindow(700,500,"FINGER POSITION");
-   readimagefile("keyboard_finger.jpg",20,20,700,500);
+   char fingerpos[]="FINGER POSITIONS";
+   char text[]="In their basic position,your fingers rest on middle row of the keyboard - also called the 'home row'.";
+   char text1[]="Now place your fingers on the home row :",text2[]="1.Put your left hand fingers on keys A S D F (as in pic)";
+   char text3[]="2.Put your right hand fingers on keys J K L ;",text4[]="3.Let the thumbs rest on space bar",text5[]="4.Keep your wrists straight and fingers lightly curled.";
+   char tip[]="Tip:The bumps on letter F and J help you find the home row without looking at hands";
+
+   initwindow(1000,700,"FINGER POSITION");
+   readimagefile("keyboard_finger.jpg",100,20,900,500);
+
+   setcolor(LIGHTRED);
    outtext(msg);
+   outtextxy(450,505,fingerpos);
+   outtextxy(150,530,text);
+   outtextxy(150,550,text1);
+   outtextxy(170,570,text2);
+   outtextxy(170,590,text3);
+   outtextxy(170,610,text4);
+   outtextxy(170,630,text5);
+   outtextxy(150,670,tip);
+
    getch();
    closegraph();
    fflush(stdout);
@@ -917,7 +955,8 @@ void menu()
         printf("\n\t\t\t\t\t\t2.Instructions");
         printf("\n\t\t\t\t\t\t3.View Statistics");
         printf("\n\t\t\t\t\t\t4.View All Records");
-        printf("\n\t\t\t\t\t\t5.Exit/Quit");
+        printf("\n\t\t\t\t\t\t5.Learning Tips");
+        printf("\n\t\t\t\t\t\t6.Exit/Quit");
 
         SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
         printf("\n\n\n\n\t\t\t\t\tEnter choice:");
@@ -955,12 +994,19 @@ void menu()
             break;
 
         case '5':
+            system("cls");
+            SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 11);
+            tips();
+            system("cls");
+            break;
+
+        case '6':
             printf("\n\n");
             exit(0);
         }
 
     }
-    while (ch != '5');
+    while (ch != '6');
 }
 
 int main()
